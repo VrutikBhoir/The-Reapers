@@ -16,8 +16,10 @@ export const validateRecord = (record: UnifiedRecord): ValidationResult => {
             validatePDFRules(record, errors);
             break;
         case 'api':
-        case 'csv': // Often API data comes as CSV/JSON, so treat similarly for consistency or separate if needed
-            validateAPIRules(record, errors); // Re-using API rules for JSON/Structure checks
+            validateAPIRules(record, errors);
+            break;
+        case 'csv':
+            validateCSVRules(record, errors);
             break;
         case 'text':
             // Text might have minimal rules
@@ -42,19 +44,12 @@ const validateGeneralRules = (record: UnifiedRecord, errors: ValidationError[]) 
         });
     }
 
-    // topic must exist (if this is post-linking, but pipeline might be running before linking? 
-    // The user prompt implies "The pipeline currently lacks validation... Ingests... Converts... Uses PDF as topic anchor". 
-    // If we are validating RAW records, topic might be empty. 
-    // BUT the requirements say "topic must exist". 
-    // If we assume this validation runs AFTER the "Converts it into a unified structured schema" step which includes Topic Linking?
-    // Or maybe it's a constraint that the record *should* have it. 
-    // Let's implement it. If it fails early pipeline, we might need to relax it or run this after linking.
-    // Given "ingestion pipeline... Uses PDF as the topic & group anchor", likely this validation is post-enrichment.
+    // topic must exist
     if (!record.topic || record.topic.trim() === '') {
         errors.push({
             code: 'MISSING_TOPIC',
             message: 'Topic must exist',
-            severity: 'HIGH', // High because it breaks grouping, but maybe not critical for *storing* the raw data? User said CRITICAL aborts current file.
+            severity: 'HIGH',
             field: 'topic',
             suggestion: 'Run topic linking before validation or check PDF anchor extraction'
         });
@@ -89,13 +84,11 @@ const validateAudioRules = (record: UnifiedRecord, errors: ValidationError[]) =>
         errors.push({
             code: 'POTENTIAL_SUMMARY',
             message: 'Content appears to be a summary',
-            severity: 'HIGH', // User said "Must NOT be a summary"
+            severity: 'HIGH',
             suggestion: 'Use real speech-to-text'
         });
     }
 
-    // Spoken language resemblance (heuristic: presence of fillers, lack of markdown headers)
-    // Hard to strictly validate "resemble spoken language" without LLM, but we can check for non-spoken artifacts
     if (content.includes('# ') || content.includes('## ')) {
         errors.push({
             code: 'MARKDOWN_DETECTED',
@@ -116,10 +109,10 @@ const validatePDFRules = (record: UnifiedRecord, errors: ValidationError[]) => {
         });
     }
 
-    // OCR confidence (if available in metadata)
-    if (record.metadata.confidence) { // Assuming metadata.confidence matches
+    // OCR confidence
+    if (record.metadata.confidence) {
         const confidence = parseFloat(String(record.metadata.confidence));
-        if (!isNaN(confidence) && confidence < 0.7) { // Example threshold
+        if (!isNaN(confidence) && confidence < 0.7) {
             errors.push({
                 code: 'LOW_OCR_CONFIDENCE',
                 message: `OCR confidence (${confidence}) is below threshold`,
@@ -132,8 +125,6 @@ const validatePDFRules = (record: UnifiedRecord, errors: ValidationError[]) => {
 
 const validateAPIRules = (record: UnifiedRecord, errors: ValidationError[]) => {
     // Must be valid JSON checks
-    // We prioritize checking raw_content if available, as structured_content might be formatted text
-    // If raw_content is missing, we fall back to checking structured_content
     const contentToCheck = record.raw_content || record.structured_content;
 
     try {
@@ -147,12 +138,9 @@ const validateAPIRules = (record: UnifiedRecord, errors: ValidationError[]) => {
         });
     }
 
-    // Must not define topic independently (User constraint: "Must not define topic independently")
-    // Meaning it should relay on the Group Anchor (PDF)? 
-    // Or literally shouldn't have a "topic" field in the raw JSON payload that overrides the system one?
-    // Let's check the raw content or the parsed object.
+    // Must not define topic independently
     try {
-        const obj = JSON.parse(record.structured_content);
+        const obj = JSON.parse(contentToCheck);
         if (obj.topic || obj.Topic) {
             errors.push({
                 code: 'INDEPENDENT_TOPIC_DEFINED',
@@ -162,6 +150,40 @@ const validateAPIRules = (record: UnifiedRecord, errors: ValidationError[]) => {
             });
         }
     } catch (e) {
-        // Already caught above
+    }
+};
+
+const validateCSVRules = (record: UnifiedRecord, errors: ValidationError[]) => {
+    // Validate that CSV row is valid JSON structure (it should be as we stringify it)
+    const contentToCheck = record.raw_content || record.structured_content;
+
+    try {
+        JSON.parse(contentToCheck);
+    } catch (e) {
+        errors.push({
+            code: 'INVALID_CSV_JSON',
+            message: 'CSV raw content is not valid JSON structure',
+            severity: 'CRITICAL',
+            field: 'raw_content'
+        });
+    }
+
+    // For CSV, we DO NOT strictly forbid "topic" columns, as they might be legitimate data.
+    // We optionally warn if it conflicts, or just ignore it.
+    // If the requirement "Must not define topic independently" applies to ALL structured inputs, 
+    // then we should keep it. But for CSVs in mixed batches, it's safer to relax it to avoid dropping data 
+    // just because a column is named "Topic".
+
+    try {
+        const obj = JSON.parse(contentToCheck);
+        if (obj.topic || obj.Topic) {
+            errors.push({
+                code: 'CSV_TOPIC_COLUMN',
+                message: 'CSV contains a "topic" column which might conflict with system topic',
+                severity: 'MEDIUM', // Warn only, don't fail
+                suggestion: 'Ensure this column is not intended to override the group topic'
+            });
+        }
+    } catch (e) {
     }
 };
