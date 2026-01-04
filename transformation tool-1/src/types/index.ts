@@ -67,12 +67,14 @@ export type SemanticType =
 
 export type SemanticMapping = Record<string, SemanticType>;
 
+export type SeverityLevel = 'info' | 'warning' | 'critical';
+
 export interface ValidationIssue {
   row: number;
   column: string;
   value: any;
   message: string;
-  severity: 'error' | 'warning' | 'info';
+  severity: SeverityLevel;
   type: 'type' | 'format' | 'range' | 'required' | 'duplicate' | 'consistency' | 'encoding' | 'other';
 }
 
@@ -81,9 +83,14 @@ export interface FieldValidationResult {
   total_values: number;
   valid_values: number;
   invalid_values: number;
-  null_values: number;
+  missing_values: number; // Changed from null_values for clarity
   quality_score: number; // 0-100
   failed_checks: string[];
+  severity_counts: {
+    critical: number;
+    warning: number;
+    info: number;
+  };
 }
 
 export interface ValidationReport {
@@ -101,6 +108,8 @@ export interface CleaningStats {
   initial_records: number;
   records_after_validation: number;
   records_after_cleaning: number;
+  records_with_critical_errors: number;
+  records_with_warnings: number;
   dropped_records: number;
   fixes_applied: Record<string, number>;
 }

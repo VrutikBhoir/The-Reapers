@@ -52,7 +52,7 @@ export const CleaningReportUI: React.FC<CleaningReportUIProps> = ({ report, onRe
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-3">
             <div className="p-2 bg-purple-500/20 rounded-lg">
-                <Activity className="w-6 h-6 text-purple-400" />
+              <Activity className="w-6 h-6 text-purple-400" />
             </div>
             Cleaning Results
           </h2>
@@ -77,30 +77,42 @@ export const CleaningReportUI: React.FC<CleaningReportUIProps> = ({ report, onRe
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          label="Total Input Records" 
-          value={stats.initial_records} 
-          icon={Filter} 
-          color="bg-blue-500" 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+        <StatCard
+          label="Total Input"
+          value={stats.initial_records}
+          icon={Filter}
+          color="bg-blue-500"
         />
-        <StatCard 
-          label="Cleaned Records" 
-          value={stats.records_after_cleaning} 
-          icon={CheckCircle} 
-          color="bg-green-500" 
+        <StatCard
+          label="Cleaned"
+          value={stats.records_after_cleaning}
+          icon={CheckCircle}
+          color="bg-green-500"
         />
-        <StatCard 
-          label="Dropped Records" 
-          value={stats.dropped_records} 
-          icon={Trash2} 
-          color="bg-red-500" 
+        <StatCard
+          label="Warnings"
+          value={stats.records_with_warnings}
+          icon={Activity}
+          color="bg-yellow-500"
         />
-        <StatCard 
-          label="Transformations" 
-          value={Object.values(stats.fixes_applied).reduce((a, b) => a + b, 0)} 
-          icon={RefreshCw} 
-          color="bg-purple-500" 
+        <StatCard
+          label="Critical"
+          value={stats.records_with_critical_errors}
+          icon={Trash2}
+          color="bg-red-500"
+        />
+        <StatCard
+          label="Dropped"
+          value={stats.dropped_records}
+          icon={Trash2}
+          color="bg-red-600"
+        />
+        <StatCard
+          label="Fixed"
+          value={Object.values(stats.fixes_applied).reduce((a, b) => a + b, 0)}
+          icon={RefreshCw}
+          color="bg-purple-500"
         />
       </div>
 
@@ -112,20 +124,20 @@ export const CleaningReportUI: React.FC<CleaningReportUIProps> = ({ report, onRe
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Object.entries(stats.fixes_applied).length > 0 ? (
             Object.entries(stats.fixes_applied).map(([key, count]) => (
-                <FixItem 
-                    key={key} 
-                    label={formatLabel(key)} 
-                    count={count} 
-                    icon={getIconForKey(key)} 
-                />
+              <FixItem
+                key={key}
+                label={formatLabel(key)}
+                count={count}
+                icon={getIconForKey(key)}
+              />
             ))
           ) : (
             <div className="col-span-full text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4">
-                    <CheckCircle className="w-8 h-8 text-slate-500" />
-                </div>
-                <p className="text-slate-400 font-medium">No transformations were needed.</p>
-                <p className="text-sm text-slate-500 mt-1">Your data was already clean!</p>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4">
+                <CheckCircle className="w-8 h-8 text-slate-500" />
+              </div>
+              <p className="text-slate-400 font-medium">No transformations were needed.</p>
+              <p className="text-sm text-slate-500 mt-1">Your data was already clean!</p>
             </div>
           )}
         </div>
@@ -142,7 +154,7 @@ export const CleaningReportUI: React.FC<CleaningReportUIProps> = ({ report, onRe
             {showPreview ? 'Hide Preview' : 'Show Preview'}
           </button>
         </div>
-        
+
         {showPreview && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left text-slate-300">
@@ -161,15 +173,15 @@ export const CleaningReportUI: React.FC<CleaningReportUIProps> = ({ report, onRe
                     {Object.values(row).map((val: any, i) => (
                       <td key={i} className="px-8 py-4 whitespace-nowrap max-w-xs truncate">
                         {val === null ? (
-                            <span className="text-slate-500 italic text-xs bg-white/5 px-2 py-1 rounded">null</span>
+                          <span className="text-slate-500 italic text-xs bg-white/5 px-2 py-1 rounded">null</span>
                         ) : typeof val === 'object' ? (
-                            <span className="font-mono text-xs text-slate-400 bg-white/5 px-2 py-1 rounded" title={JSON.stringify(val, null, 2)}>
-                                {JSON.stringify(val).slice(0, 30) + (JSON.stringify(val).length > 30 ? '...' : '')}
-                            </span>
+                          <span className="font-mono text-xs text-slate-400 bg-white/5 px-2 py-1 rounded" title={JSON.stringify(val, null, 2)}>
+                            {JSON.stringify(val).slice(0, 30) + (JSON.stringify(val).length > 30 ? '...' : '')}
+                          </span>
                         ) : (
-                            <span className="text-slate-300">
-                                {String(val).length > 50 ? String(val).slice(0, 50) + '...' : String(val)}
-                            </span>
+                          <span className="text-slate-300">
+                            {String(val).length > 50 ? String(val).slice(0, 50) + '...' : String(val)}
+                          </span>
                         )}
                       </td>
                     ))}
