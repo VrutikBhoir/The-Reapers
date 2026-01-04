@@ -13,6 +13,7 @@ export const Dashboard: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [cleaningReport, setCleaningReport] = useState<CleaningReport | null>(null);
     const [step, setStep] = useState<'upload' | 'analysis' | 'unified_complete'>('upload');
+    const [processingStage, setProcessingStage] = useState<string>('Initializing pipeline...');
     const [error, setError] = useState<string | null>(null);
 
     const handleUnifiedDataReady = (data: UnifiedRecord[]) => {
@@ -20,14 +21,24 @@ export const Dashboard: React.FC = () => {
         setError(null);
         setStep('analysis'); // Show loading state
 
-        // Simulate processing pipeline steps
-        setTimeout(() => {
+        // Simulate processing pipeline steps with stage updates
+        const executePipeline = async () => {
+            // Step 1: Ingestion & Extraction
+            setProcessingStage('Ingesting files & extracting raw text...');
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
             try {
+                // Step 2: Topic Linking & Enrichment
+                setProcessingStage('Analyzing context & linking topics...');
                 // 0. Topic Linking (Enrichment Layer)
                 const linkedData = linkRecordsByTopic(data);
+                await new Promise(resolve => setTimeout(resolve, 1200));
 
+                // Step 3: Cleaning & Normalization
+                setProcessingStage('Cleaning data & normalizing formats...');
                 // 1. Cleaning Layer
                 const { cleanedRecords, stats } = cleanUnifiedData(linkedData);
+                await new Promise(resolve => setTimeout(resolve, 1200));
 
                 const report: CleaningReport = {
                     stats,
@@ -35,6 +46,10 @@ export const Dashboard: React.FC = () => {
                     dropped_rows: []
                 };
                 setCleaningReport(report);
+
+                // Step 4: Storage Ops
+                setProcessingStage('Structuring output & validating schema...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
                 // 2. Data Collection & Output Mock
                 // (In a real app, this would upload to S3 and insert into DB)
@@ -49,7 +64,9 @@ export const Dashboard: React.FC = () => {
             } finally {
                 setIsProcessing(false);
             }
-        }, 1500);
+        };
+
+        executePipeline();
     };
 
     const handleRestart = () => {
@@ -88,6 +105,9 @@ export const Dashboard: React.FC = () => {
                             </div>
                         </div>
                         <h3 className="text-2xl font-bold text-white tracking-tight">Processing Data Pipeline</h3>
+                        <p className="text-indigo-300 mt-2 font-mono text-sm uppercase tracking-wider animate-pulse">
+                            {processingStage}
+                        </p>
                         <p className="text-slate-400 mt-3 max-w-md text-center text-lg leading-relaxed">
                             Ingesting content, extracting text, cleaning data, and structuring records...
                         </p>
